@@ -522,15 +522,6 @@ elif menu == "📊 Model Insights":
 
     )
 
-# ===================================================
-# ABOUT
-# ===================================================
-
-else:
-
-    st.header("ℹ About SmartRisk")
-
-    st.markdown("""
 
 ## 🛡 SmartRisk
 
