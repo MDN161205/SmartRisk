@@ -584,15 +584,6 @@ Random Forest Classifier
 
 ---
 
-### 👨‍💻 Developed By
-
-Harsha Vardhan
-
-B.Tech Computer Science Engineering
-
-Machine Learning + Cyber Security Mini Project
-
-""")
 
 # ===================================================
 # FOOTER
