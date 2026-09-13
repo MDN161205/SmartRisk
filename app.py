@@ -3,16 +3,10 @@ import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
 
-# -------------------------------------------------
-# Load ML Model
-# -------------------------------------------------
 
-model = joblib.load("models/model.pkl")
-encoder = joblib.load("models/label_encoder.pkl")
-
-# -------------------------------------------------
-# Streamlit Page Config
-# -------------------------------------------------
+# =========================================================
+# PAGE CONFIG
+# =========================================================
 
 st.set_page_config(
     page_title="SmartRisk",
@@ -20,9 +14,18 @@ st.set_page_config(
     layout="wide"
 )
 
-# -------------------------------------------------
-# Session State
-# -------------------------------------------------
+
+# =========================================================
+# LOAD ML MODEL
+# =========================================================
+
+model = joblib.load("models/model.pkl")
+encoder = joblib.load("models/label_encoder.pkl")
+
+
+# =========================================================
+# SESSION STATE
+# =========================================================
 
 if "history" not in st.session_state:
     st.session_state.history = []
@@ -33,355 +36,330 @@ if "total_predictions" not in st.session_state:
 if "suspicious_predictions" not in st.session_state:
     st.session_state.suspicious_predictions = 0
 
-# -------------------------------------------------
-# Header
-# -------------------------------------------------
+
+# =========================================================
+# HEADER
+# =========================================================
 
 st.title("🛡️ SmartRisk")
 
 st.caption(
-    "Real-Time User Behavior Analytics Platform for Insider Threat Detection Using Machine Learning"
+    "Real-Time User Behavior Analytics Platform "
+    "for Insider Threat Detection Using Machine Learning"
 )
 
 st.markdown("---")
 
-# -------------------------------------------------
-# Sidebar
-# -------------------------------------------------
+
+# =========================================================
+# SIDEBAR
+# =========================================================
 
 menu = st.sidebar.radio(
-
     "Navigation",
-
     [
-
         "🏠 Manual Prediction",
-
         "📂 CSV Prediction",
-
         "📊 Model Insights",
-
         "ℹ About"
-
     ]
-
 )
 
-# ==================================================
+
+# =========================================================
 # MANUAL PREDICTION
-# ==================================================
+# =========================================================
 
 if menu == "🏠 Manual Prediction":
 
     st.header("Employee Activity")
 
+    # -----------------------------------------------------
+    # Dashboard Metrics
+    # -----------------------------------------------------
+
     c1, c2, c3, c4 = st.columns(4)
 
     with c1:
-
         st.metric(
-
             "Predictions",
-
             st.session_state.total_predictions
-
         )
 
     with c2:
-
         st.metric(
-
             "Suspicious",
-
             st.session_state.suspicious_predictions
-
         )
 
     with c3:
 
         if len(st.session_state.history) == 0:
-
             avg = 0
-
         else:
-
             avg = sum(
-
                 h["Risk"]
-
                 for h in st.session_state.history
-
             ) / len(st.session_state.history)
 
         st.metric(
-
             "Average Risk",
-
             f"{avg:.1f}%"
-
         )
 
     with c4:
-
         st.metric(
-
             "ML Model",
-
             "Random Forest"
-
         )
 
     st.markdown("---")
+
+
+    # -----------------------------------------------------
+    # Input Section
+    # -----------------------------------------------------
 
     col1, col2 = st.columns(2)
 
     with col1:
 
         login_hour = st.slider(
-
             "Login Hour",
-
-            0,
-
-            23,
-
-            9
-
+            min_value=0,
+            max_value=23,
+            value=9
         )
 
         failed_logins = st.number_input(
-
             "Failed Logins",
-
-            0,
-
-            20,
-
-            0
-
+            min_value=0,
+            max_value=20,
+            value=0
         )
 
         usb = st.selectbox(
-
             "USB Usage",
-
             ["No", "Yes"]
-
         )
 
         files = st.number_input(
-
             "Files Accessed",
-
-            1,
-
-            500,
-
-            50
-
+            min_value=1,
+            max_value=500,
+            value=50
         )
+
 
     with col2:
 
         emails = st.number_input(
-
             "Emails Sent",
-
-            0,
-
-            200,
-
-            10
-
+            min_value=0,
+            max_value=200,
+            value=10
         )
 
         downloads = st.number_input(
-
             "Downloads",
-
-            0,
-
-            100,
-
-            5
-
+            min_value=0,
+            max_value=100,
+            value=5
         )
 
         after = st.selectbox(
-
             "After Hours",
-
             ["No", "Yes"]
-
         )
 
         role = st.selectbox(
-
             "Role",
-
             [
-
                 "Employee",
-
                 "Manager",
-
                 "Admin"
-
             ]
-
         )
-    # ==========================================
-    # Predict Button
-    # ==========================================
 
-    if st.button("🔍 Predict Risk", use_container_width=True):
 
-        usb_value = 1 if usb == "Yes" else 0
-        after_value = 1 if after == "Yes" else 0
+    # -----------------------------------------------------
+    # Prediction Button
+    # -----------------------------------------------------
 
-        role_value = encoder.transform([role])[0]
+    if st.button(
+        "🔍 Predict Risk",
+        use_container_width=True
+    ):
 
-        sample = pd.DataFrame([{
+        try:
 
-            "login_hour": login_hour,
-            "failed_logins": failed_logins,
-            "usb_usage": usb_value,
-            "files_accessed": files,
-            "emails_sent": emails,
-            "downloads": downloads,
-            "after_hours": after_value,
-            "role": role_value
+        
+  # Convert Yes/No values to numbers
+            usb_value = 1 if usb == "Yes" else 0
+            after_value = 1 if after == "Yes" else 0
+ 
+            # Encode role
+            role_value = encoder.transform([role])[0]
 
-        }])
+            # Create input DataFrame
+            sample = pd.DataFrame([
+                {
+                    "login_hour": login_hour,
+                    "failed_logins": failed_logins,
+                    "usb_usage": usb_value,
+                    "files_accessed": files,
+                    "emails_sent": emails,
+                    "downloads": downloads,
+                    "after_hours": after_value,
+                    "role": role_value
+                }
+            ])
 
-        prediction = model.predict(sample)[0]
+            # Make prediction
+            prediction = model.predict(sample)[0]
 
-        probability = model.predict_proba(sample)[0][1]
+            # Get probability
+            probability = model.predict_proba(sample)[0][1]
 
-        risk_score = probability * 100
+            risk_score = probability * 100
 
-        # ----------------------------------------
-        # Save History
-        # ----------------------------------------
-
-        st.session_state.total_predictions += 1
-
-        if prediction == 1:
-            st.session_state.suspicious_predictions += 1
-
-        st.session_state.history.append({
-
-            "Role": role,
-
-            "Risk": round(risk_score, 2),
-
-            "Prediction": "Suspicious" if prediction == 1 else "Normal"
-
-        })
-
-        st.markdown("---")
-
-        c1, c2 = st.columns(2)
-
-        with c1:
+            # Update counters
+            st.session_state.total_predictions += 1
 
             if prediction == 1:
+                st.session_state.suspicious_predictions += 1
 
-                st.error("⚠ Suspicious Activity Detected")
-
-            else:
-
-                st.success("✅ Normal User Activity")
-
-            st.metric(
-
-                "Risk Score",
-
-                f"{risk_score:.2f}%"
-
+            # Save prediction history
+            st.session_state.history.append(
+                {
+                    "Role": role,
+                    "Risk": round(risk_score, 2),
+                    "Prediction": (
+                        "Suspicious"
+                        if prediction == 1
+                        else "Normal"
+                    )
+                }
             )
 
-            st.progress(float(probability))
+            st.markdown("---")
 
-            if probability < 0.30:
+            # Result section
+            result_col1, result_col2 = st.columns(2)
 
-                st.success("🟢 LOW RISK")
+            with result_col1:
 
-            elif probability < 0.70:
+                if prediction == 1:
+                    st.error(
+                        "⚠️ Suspicious Activity Detected"
+                    )
+                else:
+                    st.success(
+                        "✅ Normal User Activity"
+                    )
 
-                st.warning("🟠 MEDIUM RISK")
+                st.metric(
+                    "Risk Score",
+                    f"{risk_score:.2f}%"
+                )
 
-            else:
+                st.progress(
+                    float(probability)
+                )
 
-                st.error("🔴 HIGH RISK")
+                if probability < 0.30:
+                    st.success("🟢 LOW RISK")
 
-        with c2:
+                elif probability < 0.70:
+                    st.warning("🟠 MEDIUM RISK")
 
-            st.subheader("Activity Summary")
+                else:
+                    st.error("🔴 HIGH RISK")
 
-            st.write(f"**Login Hour:** {login_hour}")
+            with result_col2:
 
-            st.write(f"**Failed Logins:** {failed_logins}")
+                st.subheader("Activity Summary")
 
-            st.write(f"**USB Usage:** {usb}")
+                st.write(
+                    f"**Login Hour:** {login_hour}"
+                )
 
-            st.write(f"**Files Accessed:** {files}")
+                st.write(
+                    f"**Failed Logins:** {failed_logins}"
+                )
 
-            st.write(f"**Emails Sent:** {emails}")
+                st.write(
+                    f"**USB Usage:** {usb}"
+                )
 
-            st.write(f"**Downloads:** {downloads}")
+                st.write(
+                    f"**Files Accessed:** {files}"
+                )
 
-            st.write(f"**After Hours:** {after}")
+                st.write(
+                    f"**Emails Sent:** {emails}"
+                )
 
-            st.write(f"**Role:** {role}")
+                st.write(
+                    f"**Downloads:** {downloads}"
+                )
 
-        st.markdown("---")
+                st.write(
+                    f"**After Hours:** {after}"
+                )
 
-        st.subheader("Prediction History")
+                st.write(
+                    f"**Role:** {role}"
+                )
 
-        history_df = pd.DataFrame(
+            st.markdown("---")
 
-            st.session_state.history
+            # Prediction History
+            st.subheader("Prediction History")
 
-        )
+            history_df = pd.DataFrame(
+                st.session_state.history
+            )
 
-        st.dataframe(
+            st.dataframe(
+                history_df,
+                use_container_width=True
+            )
 
-            history_df,
+            # Download history
+            csv = history_df.to_csv(
+                index=False
+            ).encode("utf-8")
 
-            use_container_width=True
+            st.download_button(
+                "📥 Download Prediction History",
+                csv,
+                "prediction_history.csv",
+                "text/csv",
+                use_container_width=True
+            )
 
-        )
+        except Exception as e:
 
-        csv = history_df.to_csv(
+            st.error(
+                "Prediction failed. Please check the "
+                "input values and model files."
+            )
 
-            index=False
+            st.exception(e)
 
-        ).encode("utf-8")
 
-        st.download_button(
-
-            "📥 Download Prediction History",
-
-            csv,
-
-            "prediction_history.csv",
-
-            "text/csv",
-
-            use_container_width=True
-
-        )
-    # ===================================================
+# =========================================================
 # CSV PREDICTION
-# ===================================================
+# =========================================================
 
 elif menu == "📂 CSV Prediction":
 
     st.header("📂 Bulk CSV Prediction")
 
     st.info(
-        "Upload a CSV file with the same columns used during training."
+        "Upload a CSV file containing the same "
+        "features used during model training."
     )
 
     uploaded = st.file_uploader(
@@ -391,60 +369,107 @@ elif menu == "📂 CSV Prediction":
 
     if uploaded is not None:
 
-        df = pd.read_csv(uploaded)
-
         try:
 
-            temp = df.copy()
+            df = pd.read_csv(uploaded)
 
-            temp["role"] = encoder.transform(temp["role"])
-
-            predictions = model.predict(temp)
-
-            probabilities = model.predict_proba(temp)[:,1]
-
-            df["Prediction"] = [
-                "Suspicious" if p == 1 else "Normal"
-                for p in predictions
-            ]
-
-            df["Risk Score (%)"] = [
-                round(i*100,2)
-                for i in probabilities
-            ]
-
-            st.success("Prediction Completed Successfully!")
+            st.subheader("Uploaded Data")
 
             st.dataframe(
                 df,
                 use_container_width=True
             )
 
-            csv = df.to_csv(index=False).encode("utf-8")
+            required_columns = [
+                "login_hour",
+                "failed_logins",
+                "usb_usage",
+                "files_accessed",
+                "emails_sent",
+                "downloads",
+                "after_hours",
+                "role"
+            ]
 
-            st.download_button(
+            missing_columns = [
+                column
+                for column in required_columns
+                if column not in df.columns
+            ]
 
-                "📥 Download Results",
+            if missing_columns:
 
-                csv,
+                st.error(
+                    "Missing required columns:"
+                )
 
-                "prediction_results.csv",
+                st.write(missing_columns)
 
-                "text/csv",
+            else:
 
-                use_container_width=True
+                temp = df.copy()
 
-            )
+                temp["role"] = encoder.transform(
+                    temp["role"]
+                )
+
+                predictions = model.predict(
+                    temp[required_columns]
+                )
+
+                probabilities = model.predict_proba(
+                    temp[required_columns]
+                )[:, 1]
+
+                df["Prediction"] = [
+                    "Suspicious"
+                    if p == 1
+                    else "Normal"
+                    for p in predictions
+                ]
+
+                df["Risk Score (%)"] = [
+                    round(p * 100, 2)
+                    for p in probabilities
+                ]
+
+                st.success(
+                    "✅ Prediction Completed Successfully!"
+                )
+
+                st.subheader(
+                    "Prediction Results"
+                )
+
+                st.dataframe(
+                    df,
+                    use_container_width=True
+                )
+
+                result_csv = df.to_csv(
+                    index=False
+                ).encode("utf-8")
+
+                st.download_button(
+                    "📥 Download Results",
+                    result_csv,
+                    "prediction_results.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
 
         except Exception as e:
 
-            st.error("Invalid CSV Format")
+            st.error(
+                "Invalid CSV format or prediction error."
+            )
 
             st.exception(e)
 
-# ===================================================
+
+# =========================================================
 # MODEL INSIGHTS
-# ===================================================
+# =========================================================
 
 elif menu == "📊 Model Insights":
 
@@ -453,133 +478,146 @@ elif menu == "📊 Model Insights":
     st.subheader("Feature Importance")
 
     features = [
-
         "Login Hour",
-
         "Failed Logins",
-
         "USB Usage",
-
         "Files Accessed",
-
         "Emails Sent",
-
         "Downloads",
-
         "After Hours",
-
         "Role"
-
     ]
 
     importance = model.feature_importances_
 
-    chart = pd.DataFrame({
-
-        "Feature":features,
-
-        "Importance":importance
-
-    })
+    chart = pd.DataFrame(
+        {
+            "Feature": features,
+            "Importance": importance
+        }
+    )
 
     chart = chart.sort_values(
-
         by="Importance",
-
         ascending=True
-
     )
 
-    fig, ax = plt.subplots(figsize=(8,5))
+    fig, ax = plt.subplots(
+        figsize=(8, 5)
+    )
 
     ax.barh(
-
         chart["Feature"],
-
         chart["Importance"]
-
     )
 
-    ax.set_xlabel("Importance Score")
+    ax.set_xlabel(
+        "Importance Score"
+    )
 
-    ax.set_title("Random Forest Feature Importance")
+    ax.set_title(
+        "Random Forest Feature Importance"
+    )
 
     st.pyplot(fig)
 
+    plt.close(fig)
+
     st.markdown("---")
 
+    st.subheader(
+        "Feature Importance Details"
+    )
+
     st.dataframe(
-
         chart.sort_values(
-
             by="Importance",
-
             ascending=False
-
         ),
-
         use_container_width=True
-
     )
 
 
-## 🛡 SmartRisk
+# =========================================================
+# ABOUT
+# =========================================================
 
-SmartRisk is a Machine Learning based User Behavior Analytics Platform
-developed to identify potential insider threats by analyzing employee
-activity logs.
+elif menu == "ℹ About":
 
----
+    st.header("🛡️ About SmartRisk")
 
-### 🎯 Objective
+    st.write(
+        """
+        SmartRisk is a Machine Learning based
+        User Behavior Analytics Platform designed
+        to identify potential insider threats by
+        analyzing employee activity data.
+        """
+    )
 
-Detect suspicious employee behavior using Machine Learning.
+    st.markdown("---")
 
----
+    st.subheader("🎯 Objective")
 
-### 💻 Technologies Used
+    st.write(
+        """
+        The objective of SmartRisk is to analyze
+        employee behavior and classify activity
+        as normal or potentially suspicious using
+        a Machine Learning model.
+        """
+    )
 
-- Python
+    st.subheader("💻 Technologies Used")
 
-- Streamlit
+    st.write(
+        """
+        • Python
 
-- Pandas
+        • Streamlit
 
-- Scikit-Learn
+        • Pandas
 
-- Matplotlib
+        • Scikit-Learn
 
-- Joblib
+        • Matplotlib
 
----
+        • Joblib
+        """
+    )
 
-### 🤖 Machine Learning Algorithm
+    st.subheader("🤖 Machine Learning Algorithm")
 
-Random Forest Classifier
+    st.write(
+        "Random Forest Classifier"
+    )
 
----
+    st.subheader("📊 Main Features")
 
-### 📊 Features
+    st.write(
+        """
+        • Manual Risk Prediction
 
-✅ Manual Prediction
+        • Bulk CSV Prediction
 
-✅ Bulk CSV Prediction
+        • Risk Score Calculation
 
-✅ Risk Score
+        • Prediction History
 
-✅ Prediction History
+        • Downloadable Prediction Results
 
-✅ Download Report
-
-✅ Feature Importance
-
----
+        • Feature Importance Visualization
+        """
+    )
 
 
-# ===================================================
+# =========================================================
 # FOOTER
-# ===================================================
+# =========================================================
 
 st.markdown("---")
 
-st.caption("© 2026 SmartRisk | Insider Threat Detection using Machine Learning")           
+st.caption(
+    "© 2026 SmartRisk | "
+    "Insider Threat Detection using Machine Learning"
+)
